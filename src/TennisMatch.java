@@ -7,6 +7,7 @@ public class TennisMatch {
     private Player[] players;
     private MatchType matchType;
     private Boolean tieBreack;
+    private ArrayList<TennisSet> tennisSets;
 
     public static final int MAX_NUMBER_OF_PLAYER = 2;
 
@@ -41,11 +42,11 @@ public class TennisMatch {
     }
 
     public String pointsForPlayer(Player player){
-        //Score actuel Game score + TennisSet score
+        //Score actuel TennisGame score + TennisSet score
     }
 
     public int currentSetNumber(){
-
+        return this.tennisSets.size() -1;
     }
 
     public int gamesInCurrentSetForPlayer(Player player){

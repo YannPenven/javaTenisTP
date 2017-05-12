@@ -2,6 +2,7 @@
  * Created by lp on 04/05/2017.
  */
 public interface BaseScore {
-    public String getPlayerScore();
-    public
+    String getPlayerScore(String playerName);
+    void playerHasScore(String playerName);
+    boolean isFinished();
 }

@@ -1,5 +1,9 @@
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Objects;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * Created by lp on 04/05/2017.
@@ -27,7 +31,7 @@ public class TennisSet implements BaseScore{
     }
 
     private void calculatePlayerScore(){
-        this.PlayersScore.replaceAll((k,v) -> new SetScore());
+        this.PlayersScore.replaceAll((k,v) -> new SetScore() );
         for (TennisGame tennisgame: tennisGames) {
             if(tennisgame.isFinished()){
                 this.PlayersScore.get(tennisgame.getWinner()).gameWin++;
@@ -35,42 +39,70 @@ public class TennisSet implements BaseScore{
         }
     }
 
-    private boolean minNumberOfGameReach(){
-        for(HashMap.Entry<String,SetScore> k: this.PlayersScore.entrySet()){
-            if(k.getValue().gameWin >= MIN_GAME_TO_PLAY){
+
+
+    private int getMaxGameWin() {
+        return this.PlayersScore.values()
+                    .stream()
+                    .mapToInt(e -> e.gameWin)
+                    .max()
+                    .getAsInt();
+    }
+
+    private int getMinGameWin(){
+        return this.PlayersScore.values()
+                .stream()
+                .mapToInt(e -> e.gameWin)
+                .min()
+                .getAsInt();
+    }
+
+
+    @Override
+    public String getPlayerScore(String playerName) {
+        return Integer.toString(this.PlayersScore.get(playerName).gameWin);
+    }
+
+    @Override
+    public void playerHasScore(String playerName) {
+        SetScore setScore = this.PlayersScore.get(playerName);
+        if(setScore == null){
+            throw new IllegalArgumentException("Player does not participate to the current TennisGame");
+        }
+        if(isFinished()){
+            throw new IllegalStateException("Can't increase play another game when one player has already win the set");
+        }
+        TennisGame tennisGame = this.tennisGames.get(tennisGames.size()-1);
+        if(tennisGame.isFinished()){
+            this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
+        }else {
+            tennisGame.playerHasScore(playerName);
+        }
+    }
+
+    @Override
+    public boolean isFinished() {
+        //check if score has change since last time, boolean that get to true if playerhasscore is call
+        calculatePlayerScore();
+        int maxGameWin = getMaxGameWin();
+        if (maxGameWin > MIN_GAME_TO_PLAY){
+            if(getMaxGameWin() - getMinGameWin() >= MIN_GAME_DIF_TO_WIN){
                 return true;
             }
         }
         return false;
     }
 
-
-    @Override
-    public String getPlayerScore(String playerName) {
-        return tennisGames.get(tennisGames.size()-1).getPlayerScore(playerName);
-    }
-
-    @Override
-    public void playerHasScore(String playerName) {
-        calculatePlayerScore();
-        if (minNumberOfGameReach()){
-
-        }
-        //si un il y au moin 6 game
-            //verifier si le nombre de game gagner par les deux joueurs est supérieur à 2 par rapport à l'autre joueur
-        if(this.tennisGames.get(tennisGames.size()-1).isFinished()){
-            this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
-        }
-    }
-
-    @Override
-    public boolean isFinished() {
-        return false;
-    }
-
     @Override
     public String getWinner() {
-        return null;
+        //check if game is finished
+        return this.PlayersScore.entrySet()
+                .stream()
+                .sorted((entry1,entry2) -> Integer.compare(entry1.getValue().gameWin,entry2.getValue().gameWin))
+                .map(HashMap.Entry::getKey)
+                .findFirst()
+                .orElseThrow(() -> {throw new IllegalStateException("Can't have a winner if game is not finished");})
+                .toString();
     }
 
     private class SetScore{
@@ -78,6 +110,10 @@ public class TennisSet implements BaseScore{
 
         public SetScore(){
             gameWin = 0;
+        }
+
+        public int getGameWin() {
+            return gameWin;
         }
     }
 }

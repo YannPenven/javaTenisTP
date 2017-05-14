@@ -1,19 +1,14 @@
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.function.Consumer;
+import java.util.*;
 
 /**
  * Created by lp on 04/05/2017.
  */
 public class TennisSet implements SetScore{
-    private ArrayList<SubScore> tennisGames;
-    //private ArrayList<String> playersName;//TODO: replace with ArrayList
+    private List<GameScore> tennisGames;
     private HashMap<String,SetScore> PlayersScore;
 
-    private final int MIN_GAME_TO_PLAY = 6;
-    private final int MIN_GAME_DIF_TO_WIN = 2;
+    public static final int MIN_GAME_TO_PLAY = 6;
+    public final int MIN_GAME_DIF_TO_WIN = 2;
 
     public TennisSet(List<String> playersName) {
         if(playersName.size() != TennisMatch.MAX_NUMBER_OF_PLAYER){
@@ -32,7 +27,7 @@ public class TennisSet implements SetScore{
 
     private void calculatePlayerScore(){
         this.PlayersScore.replaceAll((k,v) -> new SetScore() );
-        for (SubScore tennisgame: tennisGames) {
+        for (GameScore tennisgame: tennisGames) {
             if(tennisgame.isFinished()){
                 this.PlayersScore.get(tennisgame.getWinner()).gameWin++;
             }
@@ -58,7 +53,7 @@ public class TennisSet implements SetScore{
     @Override
     public boolean isFinished() {
         int maxGameWin = getMaxGameWin();
-        if (maxGameWin > MIN_GAME_TO_PLAY){
+        if (maxGameWin >= MIN_GAME_TO_PLAY){
             if(getMaxGameWin() - getMinGameWin() >= MIN_GAME_DIF_TO_WIN){
                 return true;
             }
@@ -74,7 +69,7 @@ public class TennisSet implements SetScore{
         }
         return this.PlayersScore.entrySet()
                 .stream()
-                .sorted(Comparator.comparingInt(entry -> entry.getValue().gameWin))
+                .sorted(Collections.reverseOrder(Comparator.comparingInt(entry -> entry.getValue().gameWin)))
                 .map(HashMap.Entry::getKey)
                 .findFirst()
                 .orElse("");
@@ -92,9 +87,9 @@ public class TennisSet implements SetScore{
             throw new IllegalArgumentException("Player does not participate to the current TennisGame");
         }
         if(isFinished()){
-            throw new IllegalStateException("Can't increase play another game when one player has already win the set");
+            throw new IllegalStateException("Can't play another game when one player has already win the set");
         }
-        SubScore tennisGame = this.tennisGames.get(tennisGames.size()-1);
+        GameScore tennisGame = this.tennisGames.get(tennisGames.size()-1);
         if(tennisGame.isFinished()){
             this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
         }else {

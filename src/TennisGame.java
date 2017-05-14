@@ -1,12 +1,11 @@
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Created by lp on 04/05/2017.
  */
-public class TennisGame implements SubScore {
+public class TennisGame implements GameScore {
     public enum TennisPoint {
         _0("0"),
         _15("15"),

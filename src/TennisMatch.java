@@ -1,11 +1,12 @@
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
  * Created by lp on 04/05/2017.
  */
-public class TennisMatch implements BaseScore {
+public class TennisMatch implements MatchScore {
     private Player[] players;
     private MatchType matchType;
     private Boolean tieBreak;
@@ -47,7 +48,12 @@ public class TennisMatch implements BaseScore {
         this.players = players;
         this.matchType = matchType;
         this.tieBreak = tieBreak;
+        this.tennisSets = new ArrayList<>();
+        addSetToMatch();
+    }
 
+    private void addSetToMatch() {
+        this.tennisSets.add(new TennisSet(Arrays.stream(this.players).map(Player::getName).collect(Collectors.<String>toList())));
     }
 
     public void updateWithPointWonBy(Player player){
@@ -56,7 +62,7 @@ public class TennisMatch implements BaseScore {
             throw new IllegalStateException("Can't keep playing when their already a winner");
         }
         if(this.tennisSets.get(tennisSets.size() -1 ).isFinished()){
-            tennisSets.add(new TennisSet(Arrays.stream(this.players).map(Player::getName).collect(Collectors.<String>toList())));
+            addSetToMatch();
         }else{
             tennisSets.get(tennisSets.size()-1).updateWithPointWonBy(player.getName());
         }
@@ -80,14 +86,17 @@ public class TennisMatch implements BaseScore {
         return this.tennisSets.get(this.tennisSets.size() -1).pointsForPlayer(player.getName());
     }
 
+    @Override
     public int currentSetNumber(){
         return this.tennisSets.size();
     }
 
+    @Override
     public int gamesInCurrentSetForPlayer(Player player){
         return this.tennisSets.get(this.tennisSets.size() -1).gamesInSetForPlayer(player.getName());
     }
 
+    @Override
     public int gamesIntSetForPlayer(int setNumber, Player player){
         if(setNumber >= this.tennisSets.size() && setNumber < 0){
             throw new IllegalArgumentException("The set number can't be inf to 0 or bigger than the current number of set");
@@ -95,8 +104,9 @@ public class TennisMatch implements BaseScore {
         return this.tennisSets.get(setNumber).gamesInSetForPlayer(player.getName());
     }
 
+    @Override
     public boolean isFinished(){
-        if(matchType.maxNumberOfSets() == this.tennisSets.size() && this.tennisSets.get(this.tennisSets.size() -1).isFinished()){
+        if(matchType.numberOfSetsToWin() <= this.tennisSets.size() && this.tennisSets.get(this.tennisSets.size() -1).isFinished()){
             return true;
         }
         return false;

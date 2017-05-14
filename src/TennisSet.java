@@ -1,26 +1,24 @@
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Objects;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Created by lp on 04/05/2017.
  */
-public class TennisSet implements BaseScore{
-    private ArrayList<TennisGame> tennisGames;
-    private String[] playersName;
+public class TennisSet implements SetScore{
+    private ArrayList<SubScore> tennisGames;
+    //private ArrayList<String> playersName;//TODO: replace with ArrayList
     private HashMap<String,SetScore> PlayersScore;
 
     private final int MIN_GAME_TO_PLAY = 6;
     private final int MIN_GAME_DIF_TO_WIN = 2;
 
-    public TennisSet(String[] playersName) {
-        if(playersName.length != TennisMatch.MAX_NUMBER_OF_PLAYER){
-            throw new IllegalArgumentException("the number number of player must be equal to " + TennisMatch.MAX_NUMBER_OF_PLAYER);
+    public TennisSet(List<String> playersName) {
+        if(playersName.size() != TennisMatch.MAX_NUMBER_OF_PLAYER){
+            throw new IllegalArgumentException("the number of player must be equal to " + TennisMatch.MAX_NUMBER_OF_PLAYER);
         }
-        this.playersName = playersName;
         this.PlayersScore = new HashMap<>();
         this.tennisGames = new ArrayList<>();
 
@@ -28,25 +26,25 @@ public class TennisSet implements BaseScore{
             this.PlayersScore.put(player,new SetScore());
         }
         this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
+
+        calculatePlayerScore();
     }
 
     private void calculatePlayerScore(){
         this.PlayersScore.replaceAll((k,v) -> new SetScore() );
-        for (TennisGame tennisgame: tennisGames) {
+        for (SubScore tennisgame: tennisGames) {
             if(tennisgame.isFinished()){
                 this.PlayersScore.get(tennisgame.getWinner()).gameWin++;
             }
         }
     }
 
-
-
     private int getMaxGameWin() {
         return this.PlayersScore.values()
                     .stream()
                     .mapToInt(e -> e.gameWin)
                     .max()
-                    .getAsInt();
+                    .orElse(0);
     }
 
     private int getMinGameWin(){
@@ -54,36 +52,11 @@ public class TennisSet implements BaseScore{
                 .stream()
                 .mapToInt(e -> e.gameWin)
                 .min()
-                .getAsInt();
-    }
-
-
-    @Override
-    public String getPlayerScore(String playerName) {
-        return Integer.toString(this.PlayersScore.get(playerName).gameWin);
-    }
-
-    @Override
-    public void playerHasScore(String playerName) {
-        SetScore setScore = this.PlayersScore.get(playerName);
-        if(setScore == null){
-            throw new IllegalArgumentException("Player does not participate to the current TennisGame");
-        }
-        if(isFinished()){
-            throw new IllegalStateException("Can't increase play another game when one player has already win the set");
-        }
-        TennisGame tennisGame = this.tennisGames.get(tennisGames.size()-1);
-        if(tennisGame.isFinished()){
-            this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
-        }else {
-            tennisGame.playerHasScore(playerName);
-        }
+                .orElse(0);
     }
 
     @Override
     public boolean isFinished() {
-        //check if score has change since last time, boolean that get to true if playerhasscore is call
-        calculatePlayerScore();
         int maxGameWin = getMaxGameWin();
         if (maxGameWin > MIN_GAME_TO_PLAY){
             if(getMaxGameWin() - getMinGameWin() >= MIN_GAME_DIF_TO_WIN){
@@ -94,15 +67,45 @@ public class TennisSet implements BaseScore{
     }
 
     @Override
-    public String getWinner() {
+    public String getWinner() throws IllegalStateException{
         //check if game is finished
+        if(!isFinished()){
+            throw new IllegalStateException("Can't have a winner if Set is not finished");
+        }
         return this.PlayersScore.entrySet()
                 .stream()
-                .sorted((entry1,entry2) -> Integer.compare(entry1.getValue().gameWin,entry2.getValue().gameWin))
+                .sorted(Comparator.comparingInt(entry -> entry.getValue().gameWin))
                 .map(HashMap.Entry::getKey)
                 .findFirst()
-                .orElseThrow(() -> {throw new IllegalStateException("Can't have a winner if game is not finished");})
-                .toString();
+                .orElse("");
+    }
+
+    @Override
+    public String pointsForPlayer(String playerName) {
+        return this.tennisGames.get(this.tennisGames.size() -1).pointsForPlayer(playerName);
+    }
+
+    @Override
+    public void updateWithPointWonBy(String playerName) {
+        SetScore setScore = this.PlayersScore.get(playerName);
+        if(setScore == null){
+            throw new IllegalArgumentException("Player does not participate to the current TennisGame");
+        }
+        if(isFinished()){
+            throw new IllegalStateException("Can't increase play another game when one player has already win the set");
+        }
+        SubScore tennisGame = this.tennisGames.get(tennisGames.size()-1);
+        if(tennisGame.isFinished()){
+            this.tennisGames.add(new TennisGame(new ArrayList<String>(this.PlayersScore.keySet())));
+        }else {
+            tennisGame.updateWithPointWonBy(playerName);
+        }
+        calculatePlayerScore();
+    }
+
+    @Override
+    public int gamesInSetForPlayer(String playerName) {
+        return this.PlayersScore.get(playerName).gameWin;
     }
 
     private class SetScore{

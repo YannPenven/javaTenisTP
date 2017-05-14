@@ -1,14 +1,13 @@
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Created by lp on 04/05/2017.
  */
-public class TennisGame implements BaseScore{
-    public enum Score {
+public class TennisGame implements SubScore {
+    public enum TennisPoint {
         _0("0"),
         _15("15"),
         _30("30"),
@@ -17,9 +16,9 @@ public class TennisGame implements BaseScore{
         _V("V");
 
         private String value;
-        private static  Score[] scores = values();
+        private static  TennisPoint[] tennisPoints = values();
 
-        Score(String i) {
+        TennisPoint(String i) {
             this.value = i;
         }
 
@@ -27,46 +26,54 @@ public class TennisGame implements BaseScore{
             return this.value;
         }
 
-        public Score next(){
-            return scores[(this.ordinal()+1) % scores.length];
+        public TennisPoint next(){
+            return tennisPoints[(this.ordinal()+1) % tennisPoints.length];
         }
+
+        public TennisPoint previous() {return  tennisPoints[(this.ordinal()-1) % tennisPoints.length];}
     }
 
-    private HashMap<String,Score> PlayersScore;
+    private HashMap<String, TennisPoint> PlayersScore;
 
-    public TennisGame(ArrayList<String> players){
-        if(players.size() != TennisMatch.MAX_NUMBER_OF_PLAYER){
+    public TennisGame(List<String> playersName){
+        if(playersName.size() != TennisMatch.MAX_NUMBER_OF_PLAYER){
             throw new IllegalArgumentException("the number number of player must be equal to " + TennisMatch.MAX_NUMBER_OF_PLAYER);
         }
         PlayersScore = new HashMap<>();
-        for (String player: players){
-            PlayersScore.put(player,Score._0);
+        for (String player: playersName){
+            PlayersScore.put(player, TennisPoint._0);
         }
     }
 
     @Override
-    public String getPlayerScore(String playerName){
-        Score score = PlayersScore.get(playerName);
-        if(score == null){
+    public String pointsForPlayer(String playerName){
+        TennisPoint tennisPoint = PlayersScore.get(playerName);
+        if(tennisPoint == null){
             throw new IllegalArgumentException("Player does not participate to the current TennisGame");
         }
-        return score.value;
+        return tennisPoint.value;
     }
 
     @Override
-    public void playerHasScore(String playerName){
-        Score score = PlayersScore.get(playerName);
-        if(score == null){
+    public void updateWithPointWonBy(String playerName){
+        TennisPoint tennisPoint = PlayersScore.get(playerName);
+        if(tennisPoint == null){
             throw new IllegalArgumentException("Player does not participate to the current TennisGame");
-        }else if(PlayersScore.containsKey(Score._V)){
-            throw new IllegalStateException("Can't increase score when one player has already win the game");
+        }else if(PlayersScore.containsKey(TennisPoint._V)){
+            throw new IllegalStateException("Can't increase tennisPoint when one player has already win the game");
+        }else if(tennisPoint != TennisPoint._A && PlayersScore.containsValue(TennisPoint._A)){
+            PlayersScore.entrySet()
+                    .stream()
+                    .filter(entry -> Objects.equals(entry.getValue(), TennisPoint._A))
+                    .findFirst()
+                    .ifPresent((x) -> { PlayersScore.put(x.getKey(),x.getValue().previous());});
         }
-        PlayersScore.put(playerName,score.next());
+        PlayersScore.put(playerName, tennisPoint.next());
     }
 
     @Override
     public boolean isFinished() {
-        if(PlayersScore.containsKey(Score._V)){
+        if(PlayersScore.containsValue(TennisPoint._V)){
             return true;
         }
         return false;
@@ -74,10 +81,14 @@ public class TennisGame implements BaseScore{
 
     @Override
     public String getWinner() {
+        if(!isFinished()){
+            throw new IllegalStateException("Can't have a winner if Game is not finished");
+        }
         return PlayersScore.entrySet()
                 .stream()
-                .filter(entry -> Objects.equals(entry.getValue(), Score._V))
+                .filter(entry -> Objects.equals(entry.getValue(), TennisPoint._V))
                 .map(HashMap.Entry::getKey)
-                .collect(Collectors.toSet()).toString();
+                .findFirst()
+                .orElse("");
     }
 }
